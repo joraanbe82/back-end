@@ -38,12 +38,13 @@ router.get("/companies/:id?", (request, response) => {
             first_name: 1,
             last_name: 1,
             email: 1,
-            validate: 1
+            validate: 1,
+            date: 1
           }
         }
       )
       .sort({
-        first_name: 1
+       date: -1
       })
       .toArray(function(err, result) {
         if (err) {
@@ -98,7 +99,8 @@ router.post("/", async (request, response) => {
       email: request.body.email,
       isAdmin: request.body.isAdmin,
       pass: md5(request.body.pass),
-      validate: request.body.validate
+      validate: request.body.validate,
+      date: new Date()
     };
     global.dbo
       .collection("companies")
@@ -109,7 +111,7 @@ router.post("/", async (request, response) => {
             .insertOne(myobj, function(err, res) {
               if (err) throw err;
               global.dbo
-                .collection("users")
+                .collection("Admin")
                 .find(
                   {
                     isAdmin: true
@@ -130,21 +132,22 @@ router.post("/", async (request, response) => {
                       .send(res.ops[0]); /* res.ops[0] show the new document*/
 
                     let transporter = nodemailer.createTransport({
-                      service: "hotmail",
+                      service: process.env.MAIL_SERVICE,
+                      host: process.env.MAIL_HOST_SERVICE,
                       secure: false,
                       port: 25,
                       auth: {
-                        user: result[0].email,
+                        user: process.env.MAIL_USER,
                         /* Who send the email, its saved in database*/
-                        pass: result[0].emailPass
+                        pass: process.env.MAIL_PASS
                       },
                       tls: {
                         rejectUnauthorized: false
                       }
                     });
                     let message = {
-                      from: "levelupPrueba@hotmail.com",
-                      to: request.body.email,
+                      from: process.env.MAIL_MESSAGE_FROM,
+                      to: [request.body.email, process.env.MAIL_MESSAGE_FROM],
                       subject: "Willkommen bei LevelUP!",
                       text: "Thank you for join at team LevelUp",
                       html: `<!DOCTYPE html>
@@ -164,41 +167,32 @@ router.post("/", async (request, response) => {
               
               <body>
                       <div class="container">
-                              <h1>Willkommen bei LevelUP!</h1>
-                              <p><strong>Bitte bestätige deine E-Mail-Adresse mit dem Klick auf den folgenden Link:
+                              <h1>Hallo Herr / Frau ${res.ops[0].last_name}</h1>
+                              <h2><strong>Willkommen bei LevelUP!</strong></h2>
+                              <p><strong>Bitte bestätigen Sie Ihre E-Mail-Adresse mit dem Klick auf den folgenden Link:
                                       </strong></p>
                               
-                              <p><a href="http://localhost:3000/verify/companies/${res.ops[0]._id}">Click</a></p>
-                              <p>Damit erteilst du uns die Erlaubnis, dass wir dir E-Mails mit weiteren Informationen zu LevelUP
-                                      schicken dürfen (z.B. Stellenanzeigen, Blogeinträge, etc.).</p>
-                              <p><u>Das Wichtigste zuerst:
-                                      </u></p>
-                              <p><strong>IN PROGRESS: </strong>Finde mit unserem Test heraus, ob remote-Zusammenarbeit überhaupt etwas
-                                      für dich ist:
-                                      Dein Downloadlink für den Gratis-Personality-Test</p>
-                              <p>Wie es danach weitergeht…</p>
-                              <p>Wenn im Ergebnis remote-Zusammenarbeit zu deinen persönlichen Vorlieben passt, dann melden wir uns
-                                      bei dir, um noch vor der fertigen Plattform ein Profil von dir zu erstellen und deine Wünsche
-                                      bzgl. eines Arbeitgebers aufzunehmen.
+                              <p><a href="https://www.network-levelup.com/verify/companies/${res.ops[0]._id}">Verifizierungslink</a><-- Click</p>
+                              <p>Damit erteilen Sie uns die Erlaubnis, dass wir Ihnen E-Mails mit weiteren Informationen zu LevelUP schicken dürfen (z.B. erste Fachkräfte-Profile, Blogeinträge, etc.).</p>
+                                                         
+                              <p>Wie geht es jetzt weiter…</p>
+                              <p>Mit Einwilligung in unsere E-Mail Serie werden wir uns mit einem Vorschlag zu einem Telefontermin bei Ihnen melden. Gerne möchten wir Ihnen erläutern, wie wir Ihre Vakanzen in Zukunft gemeinsam effizient und einfach in kürzester Zeit mit geeigneten Fachkräften aus Spanien besetzen.
                               </p>
-                              <p>Dieses Profil bringen wir in unseren persönlichen Gesprächen mit über 1.000 deutschen Arbeitgebern
-                                      ein und bauen für dich einen Erstkontakt auf. Bei Interesse kommt es auf diesem Wege zu euren
-                                      ersten Video-Interviews und wenn du dich gut anstellst zu deinem Traumjob als Angestellte von
-                                      Spanien aus für eine deutsche Firma zu arbeiten.
-              
-                              </p>
-              
-                              <p>PS: Jede E-Mail, die du aufgrund deines Einverständnisses zukünftig von uns erhältst, enthält am Ende einen Link, mittels dessen du deine E-Mail-Adresse durch einen einfachen Klick umgehend sicher löschen kannst.
-                                      </p>
+                              <p>Sind Sie offen für Neues?</p>
+                              <p>Dann gehen Sie mit uns den nächsten Schritt in Sachen New Work und internationaler Zusammenarbeit.</p>
+                              <br/>
+                              <p><strong>Vielen Dank und herzliche Grüße,</strong></p>
+                              <p><strong>Marcel Rödiger und Sandra Thomas</strong></p>
+                              <p>PS: Jede E-Mail, die Sie aufgrund Ihres Einverständnisses zukünftig von uns erhalten, enthält am Ende einen Link, mittels dessen Sie Ihre E-Mail-Adresse durch einen einfachen Klick umgehend sicher löschen können.</p>
                               <div style="text-align:center">
-                                      <p><strong>So erreichst du uns:
+                                      <p><strong>So erreichen Sie uns:
                                               </strong></p>
-                                      <p>Phone Mon-Fri 9-18 Uhr: +49 173 9644018</p>
-                                      <p>per E-mail: info@network-levelup.com</p>
-                                      <p><strong>Folge uns auch auf </strong><a href="https://www.facebook.com/network.levelup/">Facebook</a> // <a
+                                      <p>Telefon Mo-Fr 9-18 Uhr: +49 173 9644 018</p>
+                                      <p>E-Mail: info@network-levelup.com </p>
+                                      <p><strong>Follow us on </strong><a href="https://www.facebook.com/network.levelup/">Facebook</a> // <a
                                               href="https://www.instagram.com/network.levelup/">Instagram</a> // <a
                                               href="https://www.linkedin.com/company/network-levelup">LinkedIn</a> // <a
-                                              href="https://www.youtube.com/channel/UCdz_BfUo5LlKvh13s0wenhg">YouTube</a> </p>
+                                              href="https://www.youtube.com/channel/UC02i1gSEb4gAyBQ-ki6GcHQ/featured">YouTube</a> </p>
                               </div>
                                              
                               <div style="text-align:center">
@@ -206,22 +200,27 @@ router.post("/", async (request, response) => {
                                               </strong></p>
                                       <p><strong>LevelUP</strong></p>
                                       <p>Sandra Thomas & Marcel Rödiger GbR</p>
-                                      <p>Graf-Zeppelin-Strasse 32</p>
-                                      <p>31157 Sarstedt, Germany</p>
-                                      <p>Datenschutzerklärung
-                                      </p>
+                                      <p>Apenrader Straße 37</p>
+                                      <p>30165 Hannover</p>
+                                      <p>Germany</p>
+                                      <p>Datenschutzerklärung</p>
                               </div>
-              
+                              <p>Sie möchten keine weiteren E-Mails mehr erhalten?</p>                             
+                              <p><a href="https://www.network-levelUP.com/unsubscribe/${result[0]._id}">Unsubscribe</a></p>
                       </div>
               
               
               </body>
               
-              </html>`
+              </html>`,
+              attachments: [{
+                filename: 'PrivacyPolicyDE.pdf'  ,
+                path: 'https://front-levelup.herokuapp.com/PrivacyPolicyDE.pdf'
+              }]
                     };
                     transporter.sendMail(message, (error, info) => {
                       if (error) {
-                        return console.log("no se ha mandado el mail" + error);
+                        return console.log("no se ha mandado el email" + error);
                       }
                     });
                   }
